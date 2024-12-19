@@ -50,8 +50,9 @@ language_code = "en-US" if "English" in language else "ru-RU"
 def recorder_factory():
     return MediaRecorder("output.wav")
 
+# Adjusted webrtc_streamer call by removing recorder_factory
 webrtc_streamer(key="example", mode=WebRtcMode.SENDONLY, media_stream_constraints={"audio": True}, 
-                audio_receiver_size=1024, rtc_configuration={}, recorder_factory=recorder_factory)
+                audio_receiver_size=1024, rtc_configuration={})
 
 def record_audio(duration=5, sample_rate=44100):
     st.write("Recording...")
