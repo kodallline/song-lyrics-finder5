@@ -1,1 +1,2 @@
 ﻿portaudio19-dev
+deb http://deb.debian.org/debian bullseye contrib non-free
