@@ -2,10 +2,10 @@ import streamlit as st
 import requests
 import speech_recognition as sr
 
-# Genius API credentials
-GENIUS_API_KEY = "your_genius_api_key"
 
-# LastFM credentials
+GENIUS_API_KEY = "ozpgRhgVKsnIH60SjvAnkPYaNgXffNvOO4f9o2ZEBRHCpp9kdN85RYCenrOHetIy"
+
+
 LASTFM_API_KEY = "8231360901812a5d9eec29189086474c"
 
 st.set_page_config(layout="wide", page_title="Voice to Playlist")
