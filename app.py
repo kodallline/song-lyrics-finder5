@@ -5,24 +5,25 @@ import speech_recognition as sr
 import spotipy
 from spotipy.oauth2 import SpotifyOAuth
 import requests
-from streamlit_webrtc import webrtc_streamer, WebRtcMode
-from aiortc.contrib.media import MediaRecorder
 
+# Spotify API credentials
 SPOTIPY_CLIENT_ID = "3bohttarqt3ukj6gq7sq5m3u0"
 SPOTIPY_CLIENT_SECRET = "b8c613ded81a486cb6e7b3653b2845fc"
 SPOTIPY_REDIRECT_URI = "http://localhost:8000"
 SCOPE = "playlist-modify-public playlist-modify-private user-library-read"
 
+# Genius and LastFM credentials
+GENIUS_ACCESS_TOKEN = "ozpgRhgVKsnIH60SjvAnkPYaNgXffNvOO4f9o2ZEBRHCpp9kdN85RYCenrOHetIy"
+LASTFM_API_KEY = "8231360901812a5d9eec29189086474c"
+
+# Spotipy client setup
 sp = spotipy.Spotify(auth_manager=SpotifyOAuth(client_id=SPOTIPY_CLIENT_ID,
                                                client_secret=SPOTIPY_CLIENT_SECRET,
                                                redirect_uri=SPOTIPY_REDIRECT_URI,
                                                scope=SCOPE))
 
-GENIUS_ACCESS_TOKEN = "ozpgRhgVKsnIH60SjvAnkPYaNgXffNvOO4f9o2ZEBRHCpp9kdN85RYCenrOHetIy"
-LASTFM_API_KEY = "8231360901812a5d9eec29189086474c"
-
+# Configure the page
 st.set_page_config(layout="wide", page_title="Voice to Playlist")
-
 st.markdown("""
 <style>
     .stApp {
@@ -44,15 +45,9 @@ st.markdown("""
 st.title("Voice to Playlist Generator")
 st.image("mimimimi.png", width=50)
 
+# Language selection for transcription
 language = st.selectbox("Select language for transcription:", ["English (en-US)", "Russian (ru-RU)"])
 language_code = "en-US" if "English" in language else "ru-RU"
-
-def recorder_factory():
-    return MediaRecorder("output.wav")
-
-# Adjusted webrtc_streamer call by removing recorder_factory
-webrtc_streamer(key="example", mode=WebRtcMode.SENDONLY, media_stream_constraints={"audio": True}, 
-                audio_receiver_size=1024, rtc_configuration={})
 
 def record_audio(duration=5, sample_rate=44100):
     st.write("Recording...")
@@ -106,7 +101,6 @@ def get_similar_artists(artist_name, limit=5):
     }
 
     response = requests.get(base_url, params=params)
-    
     data = response.json()
     
     similar_artists = []
@@ -131,14 +125,14 @@ def create_playlist(name, track_uris):
     user_id = sp.current_user()['id']
     playlist = sp.user_playlist_create(user_id, name, public=False,
                                        description="Generated playlist with similar tracks")
-
     sp.playlist_add_items(playlist['id'], track_uris)
-
     return playlist['id']
 
+# Button to start recording
 if st.button("Start Recording"):
     st.write("Recording and transcribing... Please wait.")
 
+    # Record the audio and transcribe it
     audio_data = record_audio()
 
     transcribed_text = transcribe_audio(audio_data, 44100, language=language_code)
@@ -164,9 +158,10 @@ if st.button("Start Recording"):
                 similar_tracks = get_tracks_from_similar_artists(similar_artists)
                 st.write("Tracks from similar artists found:", similar_tracks)
 
+                # Create the playlist
                 playlist_tracks = [track_id] + similar_tracks
-
                 playlist_id = create_playlist("My Generated Playlist", playlist_tracks)
+
                 if playlist_id:
                     st.write(f"Playlist created with ID: {playlist_id}")
                 else:
