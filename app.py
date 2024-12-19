@@ -4,7 +4,6 @@ import speech_recognition as sr
 import spotipy
 from spotipy.oauth2 import SpotifyOAuth
 import requests
-import time
 
 # Spotify API credentials
 SPOTIPY_CLIENT_ID = "3bohttarqt3ukj6gq7sq5m3u0"
@@ -159,6 +158,7 @@ if uploaded_file is not None:
 
         # Search for song lyrics using the transcribed text
         song_info = search_lyrics(transcribed_text)
+        
         if song_info:
             st.write(f"Found song: {song_info['title']} by {song_info['artist']}")
             st.markdown(f"[Link to lyrics]({song_info['url']})")
@@ -168,25 +168,25 @@ if uploaded_file is not None:
             if track_id:
                 st.write("Track found on Spotify!")
 
-                # Get similar artists
+                # Get similar artists and their tracks immediately after finding the song info.
                 similar_artists = get_similar_artists(song_info['artist'])
                 if similar_artists:
                     st.write("Similar artists found:")
                     for artist in similar_artists:
                         st.write(f"- {artist}")
+
+                    # Get tracks from similar artists and display them.
+                    similar_tracks = get_tracks_from_similar_artists(similar_artists)
+                    if similar_tracks:
+                        st.write("Tracks from similar artists:")
+                        for track in similar_tracks:
+                            st.markdown(f"- [Listen to track](https://open.spotify.com/track/{track})")
+                    else:
+                        st.write("No tracks found from similar artists.")
                 else:
                     st.write("No similar artists found.")
 
-                # Get tracks from similar artists
-                similar_tracks = get_tracks_from_similar_artists(similar_artists)
-                if similar_tracks:
-                    st.write("Tracks from similar artists:")
-                    for track in similar_tracks:
-                        st.markdown(f"- [Listen to track](https://open.spotify.com/track/{track})")
-                else:
-                    st.write("No tracks found from similar artists.")
-
-                # Create the playlist
+                # Create the playlist with original track and similar tracks.
                 playlist_tracks = [track_id] + similar_tracks
                 playlist_id = create_playlist("My Generated Playlist", playlist_tracks)
 
