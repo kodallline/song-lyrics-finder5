@@ -1,5 +1,5 @@
 import streamlit as st
-import sounddevice as sd
+from streamlit_audio_recorder import st_audiorec
 import numpy as np
 import speech_recognition as sr
 import spotipy
@@ -48,13 +48,6 @@ st.image("mimimimi.png", width=50)
 # Language selection for transcription
 language = st.selectbox("Select language for transcription:", ["English (en-US)", "Russian (ru-RU)"])
 language_code = "en-US" if "English" in language else "ru-RU"
-
-def record_audio(duration=5, sample_rate=44100):
-    st.write("Recording...")
-    audio_data = sd.rec(int(duration * sample_rate), samplerate=sample_rate, channels=1, dtype='int16')
-    sd.wait()
-    st.write("Recording finished")
-    return audio_data
 
 def transcribe_audio(audio_data, sample_rate, language='en-US'):
     recognizer = sr.Recognizer()
@@ -129,11 +122,10 @@ def create_playlist(name, track_uris):
     return playlist['id']
 
 # Button to start recording
-if st.button("Start Recording"):
-    st.write("Recording and transcribing... Please wait.")
+audio_data = st_audiorec(duration=10, key="audio")  # Allow user to record for 10 seconds
 
-    # Record the audio and transcribe it
-    audio_data = record_audio()
+if audio_data is not None:
+    st.write("Recording finished. Transcribing...")
 
     transcribed_text = transcribe_audio(audio_data, 44100, language=language_code)
 
