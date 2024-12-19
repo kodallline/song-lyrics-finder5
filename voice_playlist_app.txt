@@ -1,0 +1,9 @@
+voice_playlist_app/
+│
+├── main.py
+├── audio_handler.py
+├── spotify_api.py
+├── genius_api.py
+├── lastfm_api.py
+├── config.py
+└── requirements.txt
