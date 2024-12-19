@@ -1,0 +1,1 @@
+﻿portaudio19-dev
