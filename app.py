@@ -1,12 +1,13 @@
 import streamlit as st
-import numpy as np
-import speech_recognition as sr
 import requests
+import speech_recognition as sr
+
+# Genius API credentials
+GENIUS_API_KEY = "your_genius_api_key"
 
 # LastFM credentials
 LASTFM_API_KEY = "8231360901812a5d9eec29189086474c"
 
-# Configure the page
 st.set_page_config(layout="wide", page_title="Voice to Playlist")
 st.markdown("""
 <style>
@@ -29,24 +30,37 @@ st.markdown("""
 st.title("Voice to Playlist Generator")
 st.image("mimimimi.png", width=50)
 
-# Language selection for transcription
 language = st.selectbox("Select language for transcription:", ["English (en-US)", "Russian (ru-RU)"])
 language_code = "en-US" if "English" in language else "ru-RU"
 
-# Function to transcribe audio to text
 def transcribe_audio(filename='uploaded_audio.wav', language='en-US'):
     recognizer = sr.Recognizer()
     with sr.AudioFile(filename) as source:
-        audio_data = recognizer.record(source)  # Read the entire file
+        audio_data = recognizer.record(source)
     try:
-        text = recognizer.recognize_google(audio_data, language=language)  # Using Google API for recognition
+        text = recognizer.recognize_google(audio_data, language=language)
         return text
     except sr.UnknownValueError:
         return None
     except sr.RequestError as e:
         return None
 
-# Function to get similar artists from LastFM
+def get_song_details_from_genius(text):
+    base_url = "https://api.genius.com"
+    headers = {"Authorization": f"Bearer {GENIUS_API_KEY}"}
+    search_url = f"{base_url}/search"
+    params = {"q": text}
+    response = requests.get(search_url, headers=headers, params=params)
+    if response.status_code == 200:
+        data = response.json()
+        hits = data['response']['hits']
+        if hits:
+            song_title = hits[0]['result']['title']
+            song_url = hits[0]['result']['url']
+            artist_name = hits[0]['result']['primary_artist']['name']
+            return song_title, artist_name, song_url
+    return None, None, None
+
 def get_similar_artists(artist_name, limit=5):
     base_url = "http://ws.audioscrobbler.com/2.0/"
     params = {
@@ -69,7 +83,6 @@ def get_similar_artists(artist_name, limit=5):
         st.error(f"Error while fetching similar artists: {e}")
         return []
 
-# Function to get tracks from similar artists
 def get_tracks_from_similar_artists(similar_artists):
     similar_tracks = []
     for artist in similar_artists:
@@ -91,39 +104,39 @@ def get_tracks_from_similar_artists(similar_artists):
             st.error(f"Error while fetching tracks from artist {artist}: {e}")
     return similar_tracks
 
-# Upload file option
 uploaded_file = st.file_uploader("Upload a .wav file", type=["wav"])
 
 if uploaded_file is not None:
-    # Save uploaded file
     with open("uploaded_audio.wav", "wb") as f:
         f.write(uploaded_file.getbuffer())
     st.write("File uploaded successfully! Transcribing audio...")
 
-    # Transcribe the audio from the uploaded file
     transcribed_text = transcribe_audio('uploaded_audio.wav', language=language_code)
 
     if transcribed_text:
         st.write(f"Transcribed Text: {transcribed_text}")
 
-        # Assuming the transcribed text is the artist's name for simplicity
-        artist_name = transcribed_text
+        song_title, artist_name, song_url = get_song_details_from_genius(transcribed_text)
+        if song_title:
+            st.write(f"Song found: {song_title} by {artist_name}")
+            st.write(f"Song URL: [Click here]({song_url})")
 
-        # Get similar artists and their tracks
-        similar_artists = get_similar_artists(artist_name)
-        if similar_artists:
-            st.write("Similar artists found:")
-            for artist in similar_artists:
-                st.write(f"- {artist}")
+            similar_artists = get_similar_artists(artist_name)
+            if similar_artists:
+                st.write("Similar artists found:")
+                for artist in similar_artists:
+                    st.write(f"- {artist}")
 
-            similar_tracks = get_tracks_from_similar_artists(similar_artists)
-            if similar_tracks:
-                st.write("Tracks from similar artists:")
-                for track in similar_tracks:
-                    st.write(f"- {track}")
+                similar_tracks = get_tracks_from_similar_artists(similar_artists)
+                if similar_tracks:
+                    st.write("Tracks from similar artists:")
+                    for track in similar_tracks:
+                        st.write(f"- {track}")
+                else:
+                    st.write("No tracks found from similar artists.")
             else:
-                st.write("No tracks found from similar artists.")
+                st.write("No similar artists found.")
         else:
-            st.write("No similar artists found.")
+            st.write("No song found matching the transcribed text.")
     else:
         st.error("Failed to transcribe audio.")
