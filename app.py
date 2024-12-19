@@ -1,10 +1,11 @@
 import streamlit as st
-from streamlit_audio_recorder import st_audiorec
 import numpy as np
 import speech_recognition as sr
 import spotipy
 from spotipy.oauth2 import SpotifyOAuth
 import requests
+from streamlit_webrtc import webrtc_streamer, WebRtcMode
+from aiortc.contrib.media import MediaRecorder
 
 # Spotify API credentials
 SPOTIPY_CLIENT_ID = "3bohttarqt3ukj6gq7sq5m3u0"
@@ -121,8 +122,11 @@ def create_playlist(name, track_uris):
     sp.playlist_add_items(playlist['id'], track_uris)
     return playlist['id']
 
+# WebRTC Streamer for capturing audio from the browser
+webrtc_streamer(key="audio", mode=WebRtcMode.SENDONLY, audio_receiver_size=1024, rtc_configuration={})
+
 # Button to start recording
-audio_data = st_audiorec(duration=10, key="audio")  # Allow user to record for 10 seconds
+audio_data = st.audio("recorded_audio.wav")
 
 if audio_data is not None:
     st.write("Recording finished. Transcribing...")
