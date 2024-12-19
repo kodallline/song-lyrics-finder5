@@ -1,8 +1,6 @@
 streamlit
-streamlit-webrtc
-aiortc
-numpy
-sounddevice
+streamlit-audio-recorder
 SpeechRecognition
 spotipy
 requests
+numpy
