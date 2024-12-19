@@ -1,6 +1,8 @@
-﻿streamlit
-sounddevice
-numpy
-SpeechRecognition
+sounddevice==0.4.6
+numpy==1.23.5
+requests==2.28.1
+scipy==1.9.3
+streamlit==1.22.0
+SpeechRecognition==3.8.1
+websockets==10.4
 spotipy
-requests
