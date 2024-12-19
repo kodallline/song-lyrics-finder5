@@ -1,25 +1,10 @@
 import streamlit as st
 import numpy as np
 import speech_recognition as sr
-import spotipy
-from spotipy.oauth2 import SpotifyOAuth
 import requests
 
-# Spotify API credentials
-SPOTIPY_CLIENT_ID = "3bohttarqt3ukj6gq7sq5m3u0"
-SPOTIPY_CLIENT_SECRET = "b8c613ded81a486cb6e7b3653b2845fc"
-SPOTIPY_REDIRECT_URI = "http://localhost:8000"
-SCOPE = "playlist-modify-public playlist-modify-private user-library-read"
-
-# Genius and LastFM credentials
-GENIUS_ACCESS_TOKEN = "ozpgRhgVKsnIH60SjvAnkPYaNgXffNvOO4f9o2ZEBRHCpp9kdN85RYCenrOHetIy"
+# LastFM credentials
 LASTFM_API_KEY = "8231360901812a5d9eec29189086474c"
-
-# Spotipy client setup
-sp = spotipy.Spotify(auth_manager=SpotifyOAuth(client_id=SPOTIPY_CLIENT_ID,
-                                               client_secret=SPOTIPY_CLIENT_SECRET,
-                                               redirect_uri=SPOTIPY_REDIRECT_URI,
-                                               scope=SCOPE))
 
 # Configure the page
 st.set_page_config(layout="wide", page_title="Voice to Playlist")
@@ -61,39 +46,6 @@ def transcribe_audio(filename='uploaded_audio.wav', language='en-US'):
     except sr.RequestError as e:
         return None
 
-# Function to search lyrics on Genius API
-def search_lyrics(lyrics):
-    base_url = "https://api.genius.com"
-    headers = {'Authorization': f'Bearer {GENIUS_ACCESS_TOKEN}'}
-    search_url = f"{base_url}/search"
-    params = {'q': lyrics}
-    try:
-        response = requests.get(search_url, headers=headers, params=params, timeout=10)
-        response.raise_for_status()  # Check if the request was successful
-        data = response.json()
-        if data['response']['hits']:
-            song = data['response']['hits'][0]['result']
-            return {
-                'title': song['title'],
-                'artist': song['primary_artist']['name'],
-                'url': song['url']
-            }
-        return None
-    except requests.exceptions.RequestException as e:
-        st.error(f"Error while fetching song lyrics: {e}")
-        return None
-
-# Function to search track on Spotify by title and artist
-def search_track(title, artist):
-    try:
-        results = sp.search(q=f"track:{title} artist:{artist}", type="track", limit=1)
-        if results['tracks']['items']:
-            return results['tracks']['items'][0]['uri']
-        return None
-    except Exception as e:
-        st.error(f"Error while searching for track on Spotify: {e}")
-        return None
-
 # Function to get similar artists from LastFM
 def get_similar_artists(artist_name, limit=5):
     base_url = "http://ws.audioscrobbler.com/2.0/"
@@ -122,24 +74,22 @@ def get_tracks_from_similar_artists(similar_artists):
     similar_tracks = []
     for artist in similar_artists:
         try:
-            results = sp.search(q=f"artist:{artist}", type="track", limit=1)
-            if results['tracks']['items']:
-                similar_tracks.append(results['tracks']['items'][0]['uri'])
-        except Exception as e:
+            base_url = "http://ws.audioscrobbler.com/2.0/"
+            params = {
+                'method': 'artist.gettoptracks',
+                'artist': artist,
+                'api_key': LASTFM_API_KEY,
+                'format': 'json',
+                'limit': 1
+            }
+            response = requests.get(base_url, params=params, timeout=10)
+            response.raise_for_status()
+            data = response.json()
+            if 'toptracks' in data and 'track' in data['toptracks']:
+                similar_tracks.append(data['toptracks']['track'][0]['name'])
+        except requests.exceptions.RequestException as e:
             st.error(f"Error while fetching tracks from artist {artist}: {e}")
     return similar_tracks
-
-# Function to create playlist on Spotify
-def create_playlist(name, track_uris):
-    try:
-        user_id = sp.current_user()['id']
-        playlist = sp.user_playlist_create(user_id, name, public=False,
-                                           description="Generated playlist with similar tracks")
-        sp.playlist_add_items(playlist['id'], track_uris)
-        return playlist['id']
-    except Exception as e:
-        st.error(f"Error while creating playlist: {e}")
-        return None
 
 # Upload file option
 uploaded_file = st.file_uploader("Upload a .wav file", type=["wav"])
@@ -156,48 +106,24 @@ if uploaded_file is not None:
     if transcribed_text:
         st.write(f"Transcribed Text: {transcribed_text}")
 
-        # Search for song lyrics using the transcribed text
-        song_info = search_lyrics(transcribed_text)
-        
-        if song_info:
-            st.write(f"Found song: {song_info['title']} by {song_info['artist']}")
-            st.markdown(f"[Link to lyrics]({song_info['url']})")
+        # Assuming the transcribed text is the artist's name for simplicity
+        artist_name = transcribed_text
 
-            # Search for track on Spotify
-            track_id = search_track(song_info['title'], song_info['artist'])
-            if track_id:
-                st.write("Track found on Spotify!")
+        # Get similar artists and their tracks
+        similar_artists = get_similar_artists(artist_name)
+        if similar_artists:
+            st.write("Similar artists found:")
+            for artist in similar_artists:
+                st.write(f"- {artist}")
 
-                # Get similar artists and their tracks immediately after finding the song info.
-                similar_artists = get_similar_artists(song_info['artist'])
-                if similar_artists:
-                    st.write("Similar artists found:")
-                    for artist in similar_artists:
-                        st.write(f"- {artist}")
-
-                    # Get tracks from similar artists and display them.
-                    similar_tracks = get_tracks_from_similar_artists(similar_artists)
-                    if similar_tracks:
-                        st.write("Tracks from similar artists:")
-                        for track in similar_tracks:
-                            st.markdown(f"- [Listen to track](https://open.spotify.com/track/{track})")
-                    else:
-                        st.write("No tracks found from similar artists.")
-                else:
-                    st.write("No similar artists found.")
-
-                # Create the playlist with original track and similar tracks.
-                playlist_tracks = [track_id] + similar_tracks
-                playlist_id = create_playlist("My Generated Playlist", playlist_tracks)
-
-                if playlist_id:
-                    st.write(f"Playlist created with ID: {playlist_id}")
-                    st.markdown(f"[Open your playlist on Spotify](https://open.spotify.com/playlist/{playlist_id})")
-                else:
-                    st.error("Failed to create a playlist.")
+            similar_tracks = get_tracks_from_similar_artists(similar_artists)
+            if similar_tracks:
+                st.write("Tracks from similar artists:")
+                for track in similar_tracks:
+                    st.write(f"- {track}")
             else:
-                st.error("Could not find the track on Spotify.")
+                st.write("No tracks found from similar artists.")
         else:
-            st.error("Couldn't find lyrics.")
+            st.write("No similar artists found.")
     else:
         st.error("Failed to transcribe audio.")
